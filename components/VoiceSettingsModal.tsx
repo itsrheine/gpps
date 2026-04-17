@@ -3,7 +3,7 @@ import { Modal, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-n
 export type AccentOption = 'classic' | 'british' | 'italian';
 export type HumorLevel = 'low' | 'medium' | 'high';
 
-type VoiceSettingsModalProps = {
+type Props = {
   visible: boolean;
   onClose: () => void;
   accent: AccentOption;
@@ -23,53 +23,57 @@ export default function VoiceSettingsModal({
   onSelectAccent,
   onSelectHumor,
   onToggleAutoCallouts,
-}: VoiceSettingsModalProps) {
+}: Props) {
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.overlay}>
         <View style={styles.sheet}>
           <Text style={styles.title}>Voice Settings</Text>
 
-          <Text style={styles.sectionLabel}>Accent</Text>
+          {/* Accent */}
+          <Text style={styles.section}>Accent</Text>
           <View style={styles.row}>
             {(['classic', 'british', 'italian'] as AccentOption[]).map((item) => (
               <TouchableOpacity
                 key={item}
-                style={[styles.pill, accent === item && styles.pillActive]}
+                style={[styles.pill, accent === item && styles.active]}
                 onPress={() => onSelectAccent(item)}
               >
-                <Text style={[styles.pillText, accent === item && styles.pillTextActive]}>
-                  {item.charAt(0).toUpperCase() + item.slice(1)}
+                <Text style={[styles.pillText, accent === item && styles.activeText]}>
+                  {item}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          <Text style={styles.sectionLabel}>Humor Level</Text>
+          {/* Humor */}
+          <Text style={styles.section}>Humor Level</Text>
           <View style={styles.row}>
             {(['low', 'medium', 'high'] as HumorLevel[]).map((item) => (
               <TouchableOpacity
                 key={item}
-                style={[styles.pill, humorLevel === item && styles.pillActive]}
+                style={[styles.pill, humorLevel === item && styles.active]}
                 onPress={() => onSelectHumor(item)}
               >
-                <Text style={[styles.pillText, humorLevel === item && styles.pillTextActive]}>
-                  {item.charAt(0).toUpperCase() + item.slice(1)}
+                <Text style={[styles.pillText, humorLevel === item && styles.activeText]}>
+                  {item}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
+          {/* Toggle */}
           <View style={styles.toggleRow}>
             <View>
               <Text style={styles.toggleTitle}>Auto Callouts</Text>
-              <Text style={styles.toggleSubtitle}>Announce places while driving</Text>
+              <Text style={styles.toggleSub}>Speak automatically while driving</Text>
             </View>
             <Switch value={autoCallouts} onValueChange={onToggleAutoCallouts} />
           </View>
 
+          {/* Done */}
           <TouchableOpacity style={styles.doneButton} onPress={onClose}>
-            <Text style={styles.doneButtonText}>Done</Text>
+            <Text style={styles.doneText}>Done</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -80,7 +84,7 @@ export default function VoiceSettingsModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.28)',
+    backgroundColor: 'rgba(0,0,0,0.3)',
     justifyContent: 'flex-end',
   },
   sheet: {
@@ -94,42 +98,39 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     textAlign: 'center',
-    marginBottom: 18,
+    marginBottom: 16,
   },
-  sectionLabel: {
+  section: {
+    marginTop: 10,
+    marginBottom: 8,
     fontSize: 14,
     fontWeight: '700',
     color: '#666',
-    marginBottom: 10,
-    marginTop: 8,
-    textTransform: 'uppercase',
   },
   row: {
     flexDirection: 'row',
     gap: 10,
-    marginBottom: 14,
     flexWrap: 'wrap',
   },
   pill: {
     backgroundColor: '#f2f2f2',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderRadius: 20,
   },
-  pillActive: {
+  active: {
     backgroundColor: '#111',
   },
   pillText: {
     color: '#111',
     fontWeight: '600',
   },
-  pillTextActive: {
+  activeText: {
     color: '#fff',
   },
   toggleRow: {
-    marginTop: 10,
+    marginTop: 18,
     marginBottom: 18,
-    paddingVertical: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -137,23 +138,19 @@ const styles = StyleSheet.create({
   toggleTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111',
   },
-  toggleSubtitle: {
-    fontSize: 13,
+  toggleSub: {
+    fontSize: 12,
     color: '#666',
-    marginTop: 4,
   },
   doneButton: {
     backgroundColor: '#111',
-    paddingVertical: 16,
-    borderRadius: 26,
-    marginTop: 8,
+    padding: 16,
+    borderRadius: 24,
   },
-  doneButtonText: {
+  doneText: {
     textAlign: 'center',
     color: '#fff',
     fontWeight: '700',
-    fontSize: 16,
   },
 });
