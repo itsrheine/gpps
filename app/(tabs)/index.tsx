@@ -1,23 +1,16 @@
 import * as Speech from 'expo-speech';
 import { useEffect, useRef, useState } from 'react';
-import { Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-
-type VoiceOption = {
-  id: string;
-  label: string;
-};
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import VoiceSettingsModal, {
+  AccentOption,
+  HumorLevel,
+} from '../../components/VoiceSettingsModal';
 
 type PlaceStop = {
   id: string;
   type: 'italian' | 'coffee' | 'gas';
   name: string;
 };
-
-const VOICES: VoiceOption[] = [
-  { id: 'classic', label: 'Classic' },
-  { id: 'funny', label: 'Funny' },
-  { id: 'british', label: 'British' },
-];
 
 const ROUTE_STOPS: PlaceStop[] = [
   { id: '1', type: 'coffee', name: 'Morning Brew Cafe' },
@@ -26,24 +19,48 @@ const ROUTE_STOPS: PlaceStop[] = [
 ];
 
 export default function HomeScreen() {
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedVoice, setSelectedVoice] = useState<VoiceOption>(VOICES[0]);
+  const [settingsVisible, setSettingsVisible] = useState(false);
+  const [accent, setAccent] = useState<AccentOption>('classic');
+  const [humorLevel, setHumorLevel] = useState<HumorLevel>('medium');
+  const [autoCallouts, setAutoCallouts] = useState(true);
+
   const [isDriving, setIsDriving] = useState(false);
   const [currentStopIndex, setCurrentStopIndex] = useState(-1);
   const [destination, setDestination] = useState('Downtown San Francisco');
+
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const getLineForPlace = (place: PlaceStop) => {
-    if (selectedVoice.id === 'funny') {
-      if (place.type === 'italian') return `Pasta temptation detected. ${place.name} is nearby.`;
+    if (accent === 'italian' && place.type === 'italian') {
+      if (humorLevel === 'high') return `Mamma mia, pasta temptation ahead at ${place.name}.`;
+      if (humorLevel === 'low') return `Italian restaurant nearby: ${place.name}.`;
+      return `There is a lovely Italian restaurant nearby: ${place.name}.`;
+    }
+
+    if (accent === 'british') {
+      if (place.type === 'coffee') {
+        if (humorLevel === 'high') return `Bit of a coffee emergency, is it? ${place.name} is ahead.`;
+        if (humorLevel === 'low') return `Coffee shop nearby: ${place.name}.`;
+        return `Quite a nice coffee spot ahead: ${place.name}.`;
+      }
+
+      if (place.type === 'gas') {
+        if (humorLevel === 'high') return `Petrol stop ahead. Let us not be dramatic about the fuel gauge.`;
+        if (humorLevel === 'low') return `Petrol station nearby: ${place.name}.`;
+        return `There is a petrol station nearby: ${place.name}.`;
+      }
+    }
+
+    if (humorLevel === 'high') {
+      if (place.type === 'italian') return `Pasta temptation detected at ${place.name}.`;
       if (place.type === 'coffee') return `Caffeine alert. ${place.name} is coming up.`;
       return `Fuel check. ${place.name} is nearby if your tank is feeling dramatic.`;
     }
 
-    if (selectedVoice.id === 'british') {
-      if (place.type === 'italian') return `There’s a lovely Italian restaurant nearby: ${place.name}.`;
-      if (place.type === 'coffee') return `Quite a nice coffee spot ahead: ${place.name}.`;
-      return `There’s a petrol station nearby: ${place.name}.`;
+    if (humorLevel === 'low') {
+      if (place.type === 'italian') return `Italian restaurant nearby: ${place.name}.`;
+      if (place.type === 'coffee') return `Coffee shop nearby: ${place.name}.`;
+      return `Gas station nearby: ${place.name}.`;
     }
 
     if (place.type === 'italian') return `There is an Italian restaurant nearby: ${place.name}.`;
@@ -52,13 +69,8 @@ export default function HomeScreen() {
   };
 
   const speakPlace = (place: PlaceStop) => {
+    if (!autoCallouts) return;
     Speech.speak(getLineForPlace(place));
-  };
-
-  const chooseVoice = (voice: VoiceOption) => {
-    setSelectedVoice(voice);
-    setModalVisible(false);
-    Speech.speak(`${voice.label} voice selected.`);
   };
 
   const startDrive = () => {
@@ -93,14 +105,17 @@ export default function HomeScreen() {
     Speech.stop();
   };
 
+  const previewVoice = () => {
+    Speech.speak(`Accent ${accent}. Humor ${humorLevel}. Auto callouts ${autoCallouts ? 'on' : 'off'}.`);
+  };
+
   useEffect(() => {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, []);
 
-  const currentPlace =
-    currentStopIndex >= 0 ? ROUTE_STOPS[currentStopIndex] : null;
+  const currentPlace = currentStopIndex >= 0 ? ROUTE_STOPS[currentStopIndex] : null;
 
   return (
     <View style={styles.container}>
@@ -124,10 +139,13 @@ export default function HomeScreen() {
 
       <View style={styles.topChips}>
         <View style={styles.chip}>
-          <Text style={styles.chipText}>{selectedVoice.label}</Text>
+          <Text style={styles.chipText}>{accent}</Text>
         </View>
         <View style={styles.chip}>
-          <Text style={styles.chipText}>{isDriving ? 'Driving' : 'Preview'}</Text>
+          <Text style={styles.chipText}>{humorLevel} humor</Text>
+        </View>
+        <View style={styles.chip}>
+          <Text style={styles.chipText}>{autoCallouts ? 'auto on' : 'auto off'}</Text>
         </View>
       </View>
 
@@ -144,14 +162,20 @@ export default function HomeScreen() {
           </View>
         ) : (
           <View style={styles.placeCard}>
-            <Text style={styles.placeTitle}>Next experience</Text>
-            <Text style={styles.placeName}>Voice-guided place callouts</Text>
-            <Text style={styles.placeType}>Coffee • Italian • Gas</Text>
+            <Text style={styles.placeTitle}>Current GPPS Mode</Text>
+            <Text style={styles.placeName}>Accent: {accent}</Text>
+            <Text style={styles.placeType}>
+              Humor: {humorLevel} • Auto: {autoCallouts ? 'On' : 'Off'}
+            </Text>
           </View>
         )}
 
-        <TouchableOpacity style={styles.voiceButton} onPress={() => setModalVisible(true)}>
-          <Text style={styles.voiceButtonText}>Choose Voice</Text>
+        <TouchableOpacity style={styles.voiceButton} onPress={() => setSettingsVisible(true)}>
+          <Text style={styles.voiceButtonText}>Voice Settings</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.previewButton} onPress={previewVoice}>
+          <Text style={styles.previewButtonText}>Preview Voice</Text>
         </TouchableOpacity>
 
         {!isDriving ? (
@@ -165,27 +189,16 @@ export default function HomeScreen() {
         )}
       </View>
 
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>Choose a Voice</Text>
-
-            {VOICES.map((voice) => (
-              <TouchableOpacity
-                key={voice.id}
-                style={styles.voiceOption}
-                onPress={() => chooseVoice(voice)}
-              >
-                <Text style={styles.voiceOptionText}>{voice.label}</Text>
-              </TouchableOpacity>
-            ))}
-
-            <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      <VoiceSettingsModal
+        visible={settingsVisible}
+        onClose={() => setSettingsVisible(false)}
+        accent={accent}
+        humorLevel={humorLevel}
+        autoCallouts={autoCallouts}
+        onSelectAccent={setAccent}
+        onSelectHumor={setHumorLevel}
+        onToggleAutoCallouts={setAutoCallouts}
+      />
     </View>
   );
 }
@@ -271,6 +284,8 @@ const styles = StyleSheet.create({
     left: 16,
     flexDirection: 'row',
     gap: 10,
+    flexWrap: 'wrap',
+    right: 16,
   },
   chip: {
     backgroundColor: '#ffffffdd',
@@ -282,6 +297,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#333',
+    textTransform: 'capitalize',
   },
   bottomSheet: {
     position: 'absolute',
@@ -333,6 +349,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#111',
+    textTransform: 'capitalize',
   },
   placeType: {
     marginTop: 6,
@@ -351,6 +368,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#111',
+  },
+  previewButton: {
+    marginTop: 12,
+    backgroundColor: '#e9eefc',
+    paddingVertical: 16,
+    borderRadius: 26,
+  },
+  previewButtonText: {
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1d4ed8',
   },
   startButton: {
     marginTop: 12,
@@ -375,44 +404,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#fff',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.28)',
-    justifyContent: 'flex-end',
-  },
-  modalSheet: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingBottom: 30,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  voiceOption: {
-    backgroundColor: '#f6f6f6',
-    padding: 16,
-    borderRadius: 18,
-    marginBottom: 12,
-  },
-  voiceOptionText: {
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  closeButton: {
-    marginTop: 4,
-    padding: 14,
-  },
-  closeButtonText: {
-    textAlign: 'center',
-    fontSize: 16,
-    color: '#666',
-    fontWeight: '600',
   },
 });
