@@ -1,477 +1,272 @@
-import VoiceSettingsModal, {
-  AccentOption,
-  HumorLevel,
-} from '@/components/VoiceSettingsModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Speech from 'expo-speech';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
+
+import VoiceSettingsModal, {
+  AccentOption,
+  HumorLevel,
+} from '../../components/VoiceSettingsModal';
 
 type PlaceStop = {
-id: string;
-type: 'italian' | 'coffee' | 'gas';
-name: string;
+  id: string;
+  type: 'italian' | 'coffee' | 'gas';
+  name: string;
 };
 
 const ROUTE_STOPS: PlaceStop[] = [
-{ id: '1', type: 'coffee', name: 'Morning Brew Cafe' },
-{ id: '2', type: 'italian', name: 'Luigi’s Trattoria' },
-{ id: '3', type: 'gas', name: 'QuickFuel Station' },
+  { id: '1', type: 'coffee', name: 'Morning Brew Cafe' },
+  { id: '2', type: 'italian', name: "Luigi's Trattoria" },
+  { id: '3', type: 'gas', name: 'QuickFuel Station' },
 ];
 
 const STORAGE_KEYS = {
-accent: 'gpps_accent',
-humorLevel: 'gpps_humorLevel',
-autoCallouts: 'gpps_autoCallouts',
+  accent: 'gpps_accent',
+  humorLevel: 'gpps_humorLevel',
+  autoCallouts: 'gpps_autoCallouts',
 };
 
 export default function HomeScreen() {
-const [settingsVisible, setSettingsVisible] = useState(false);
-const [accent, setAccent] = useState<AccentOption>('classic');
-const [humorLevel, setHumorLevel] = useState<HumorLevel>('medium');
-const [autoCallouts, setAutoCallouts] = useState(true);
-const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [settingsVisible, setSettingsVisible] = useState(false);
+  const [accent, setAccent] = useState<AccentOption>('classic');
+  const [humorLevel, setHumorLevel] = useState<HumorLevel>('medium');
+  const [autoCallouts, setAutoCallouts] = useState(true);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
-const [isDriving, setIsDriving] = useState(false);
-const [currentStopIndex, setCurrentStopIndex] = useState(-1);
-const [destination, setDestination] = useState('Downtown San Francisco');
+  const [destination, setDestination] = useState('San Leandro');
+  const [command, setCommand] = useState('');
 
-const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-useEffect(() => {
-const loadSettings = async () => {
-try {
-const savedAccent = await AsyncStorage.getItem(STORAGE_KEYS.accent);
-const savedHumorLevel = await AsyncStorage.getItem(STORAGE_KEYS.humorLevel);
-const savedAutoCallouts = await AsyncStorage.getItem(STORAGE_KEYS.autoCallouts);
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const savedAccent = await AsyncStorage.getItem(STORAGE_KEYS.accent);
+        const savedHumor = await AsyncStorage.getItem(STORAGE_KEYS.humorLevel);
+        const savedAuto = await AsyncStorage.getItem(STORAGE_KEYS.autoCallouts);
 
-if (savedAccent) {
-setAccent(savedAccent as AccentOption);
-}
+        if (savedAccent) setAccent(savedAccent as AccentOption);
+        if (savedHumor) setHumorLevel(savedHumor as HumorLevel);
+        if (savedAuto !== null) setAutoCallouts(savedAuto === 'true');
+      } catch (e) {
+        console.log(e);
+      } finally {
+        setSettingsLoaded(true);
+      }
+    };
 
-if (savedHumorLevel) {
-setHumorLevel(savedHumorLevel as HumorLevel);
-}
+    loadSettings();
+  }, []);
 
-if (savedAutoCallouts !== null) {
-setAutoCallouts(savedAutoCallouts === 'true');
-}
-} catch (error) {
-console.log('Failed to load GPPS settings:', error);
-} finally {
-setSettingsLoaded(true);
-}
-};
+  useEffect(() => {
+    if (!settingsLoaded) return;
 
-loadSettings();
-}, []);
+    AsyncStorage.setItem(STORAGE_KEYS.accent, accent);
+    AsyncStorage.setItem(STORAGE_KEYS.humorLevel, humorLevel);
+    AsyncStorage.setItem(STORAGE_KEYS.autoCallouts, autoCallouts.toString());
+  }, [accent, humorLevel, autoCallouts, settingsLoaded]);
 
-useEffect(() => {
-if (!settingsLoaded) return;
+  const previewVoice = () => {
+    Speech.speak(`Accent ${accent}. Humor ${humorLevel}.`);
+  };
 
-const saveSettings = async () => {
-try {
-await AsyncStorage.setItem(STORAGE_KEYS.accent, accent);
-await AsyncStorage.setItem(STORAGE_KEYS.humorLevel, humorLevel);
-await AsyncStorage.setItem(
-STORAGE_KEYS.autoCallouts,
-autoCallouts.toString()
-);
-} catch (error) {
-console.log('Failed to save GPPS settings:', error);
-}
-};
+  const speakPlace = (place: PlaceStop) => {
+    let message = '';
+    let language = 'en-US';
 
-saveSettings();
-}, [accent, humorLevel, autoCallouts, settingsLoaded]);
+    if (accent === 'italian') {
+      language = 'it-IT';
+    } else if (accent === 'british') {
+      language = 'en-GB';
+    }
 
-const getLineForPlace = (place: PlaceStop) => {
-if (accent === 'italian' && place.type === 'italian') {
-if (humorLevel === 'high') return `Mamma mia, pasta temptation ahead at ${place.name}.`;
-if (humorLevel === 'low') return `Italian restaurant nearby: ${place.name}.`;
-return `There is a lovely Italian restaurant nearby: ${place.name}.`;
-}
+    if (humorLevel === 'high') {
+      if (place.type === 'italian') message = `Mamma mia, pasta alert at ${place.name}.`;
+      else if (place.type === 'coffee') message = `Coffee on your right. Stay alive.`;
+      else message = `Gas station coming up. Do not get stranded.`;
+    } else if (humorLevel === 'low') {
+      message = `${place.type} nearby. ${place.name}.`;
+    } else {
+      message = `There is a ${place.type} nearby. ${place.name}.`;
+    }
 
-if (accent === 'british') {
-if (place.type === 'coffee') {
-if (humorLevel === 'high') return `Bit of a coffee emergency, is it? ${place.name} is ahead.`;
-if (humorLevel === 'low') return `Coffee shop nearby: ${place.name}.`;
-return `Quite a nice coffee spot ahead: ${place.name}.`;
-}
+    if (autoCallouts) {
+      Speech.speak(message, { language });
+    }
+  };
 
-if (place.type === 'gas') {
-if (humorLevel === 'high') return `Petrol stop ahead. Let us not be dramatic about the fuel gauge.`;
-if (humorLevel === 'low') return `Petrol station nearby: ${place.name}.`;
-return `There is a petrol station nearby: ${place.name}.`;
-}
-}
+  const startFakeNavigation = () => {
+    Speech.stop();
+    timeoutsRef.current.forEach(clearTimeout);
+    timeoutsRef.current = [];
 
-if (humorLevel === 'high') {
-if (place.type === 'italian') return `Pasta temptation detected at ${place.name}.`;
-if (place.type === 'coffee') return `Caffeine alert. ${place.name} is coming up.`;
-return `Fuel check. ${place.name} is nearby if your tank is feeling dramatic.`;
-}
+    Speech.speak(`Starting navigation to ${destination}.`);
 
-if (humorLevel === 'low') {
-if (place.type === 'italian') return `Italian restaurant nearby: ${place.name}.`;
-if (place.type === 'coffee') return `Coffee shop nearby: ${place.name}.`;
-return `Gas station nearby: ${place.name}.`;
-}
+    ROUTE_STOPS.forEach((place, index) => {
+      const t = setTimeout(() => speakPlace(place), (index + 1) * 4000);
+      timeoutsRef.current.push(t);
+    });
+  };
 
-if (place.type === 'italian') return `There is an Italian restaurant nearby: ${place.name}.`;
-if (place.type === 'coffee') return `There is a coffee shop nearby: ${place.name}.`;
-return `There is a gas station nearby: ${place.name}.`;
-};
+  const handleCommand = () => {
+    const text = command.toLowerCase();
 
-const speakPlace = (place: PlaceStop) => {
-if (!autoCallouts) return;
-Speech.speak(getLineForPlace(place));
-};
+    if (text.includes('british')) {
+      setAccent('british');
+      Speech.speak('Switching to British voice.');
+    } else if (text.includes('italian')) {
+      setAccent('italian');
+      Speech.speak('Switching to Italian voice.');
+    } else if (text.includes('classic')) {
+      setAccent('classic');
+      Speech.speak('Switching to classic voice.');
+    }
 
-const startDrive = () => {
-if (intervalRef.current) clearInterval(intervalRef.current);
+    if (text.includes('funny')) {
+      setHumorLevel('high');
+      Speech.speak('Humor increased.');
+    } else if (text.includes('serious')) {
+      setHumorLevel('low');
+      Speech.speak('Humor lowered.');
+    }
 
-setIsDriving(true);
-setCurrentStopIndex(-1);
-Speech.speak(`Starting route to ${destination}.`);
+    if (text.includes('turn off')) {
+      setAutoCallouts(false);
+      Speech.speak('Callouts off.');
+    } else if (text.includes('turn on')) {
+      setAutoCallouts(true);
+      Speech.speak('Callouts on.');
+    }
 
-let index = 0;
-intervalRef.current = setInterval(() => {
-if (index >= ROUTE_STOPS.length) {
-if (intervalRef.current) clearInterval(intervalRef.current);
-intervalRef.current = null;
-setIsDriving(false);
-Speech.speak('Drive simulation complete.');
-return;
-}
+    setCommand('');
+  };
 
-setCurrentStopIndex(index);
-speakPlace(ROUTE_STOPS[index]);
-index += 1;
-}, 5000);
-};
+  if (!settingsLoaded) {
+    return (
+      <View style={styles.center}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
 
-const stopDrive = () => {
-if (intervalRef.current) {
-clearInterval(intervalRef.current);
-intervalRef.current = null;
-}
-setIsDriving(false);
-Speech.stop();
-};
+  return (
+    <View style={{ flex: 1 }}>
+      <MapView
+        style={{ flex: 1 }}
+        initialRegion={{
+          latitude: 37.7249,
+          longitude: -122.1561,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        }}
+      >
+        <Marker coordinate={{ latitude: 37.7249, longitude: -122.1561 }} />
+      </MapView>
 
-const previewVoice = () => {
-Speech.speak(
-`Accent ${accent}. Humor ${humorLevel}. Auto callouts ${autoCallouts ? 'on' : 'off'}.`
-);
-};
+      <View style={styles.searchBar}>
+        <TextInput
+          value={destination}
+          onChangeText={setDestination}
+          placeholder="Where to?"
+          style={styles.input}
+        />
+      </View>
 
-useEffect(() => {
-return () => {
-if (intervalRef.current) clearInterval(intervalRef.current);
-};
-}, []);
+      <View style={styles.commandBar}>
+        <TextInput
+          value={command}
+          onChangeText={setCommand}
+          placeholder="Try: 'British voice'..."
+          style={styles.commandInput}
+        />
+        <TouchableOpacity onPress={handleCommand} style={styles.commandBtn}>
+          <Text style={styles.commandBtnText}>Go</Text>
+        </TouchableOpacity>
+      </View>
 
-if (!settingsLoaded) {
-return (
-<View style={styles.container}>
-<View style={styles.fakeMap}>
-<Text style={styles.routeTitle}>Loading GPPS settings...</Text>
-</View>
-</View>
-);
-}
+      <View style={styles.bottom}>
+        <TouchableOpacity style={styles.btn} onPress={() => setSettingsVisible(true)}>
+          <Text style={styles.btnText}>Voice Settings</Text>
+        </TouchableOpacity>
 
-const currentPlace = currentStopIndex >= 0 ? ROUTE_STOPS[currentStopIndex] : null;
+        <TouchableOpacity style={styles.btn} onPress={previewVoice}>
+          <Text style={styles.btnText}>Preview Voice</Text>
+        </TouchableOpacity>
 
-return (
-<View style={styles.container}>
-<View style={styles.fakeMap}>
-<View style={styles.mapBlobTopLeft} />
-<View style={styles.mapBlobBottomRight} />
-<View style={styles.roadHorizontal} />
-<View style={styles.roadVertical} />
-</View>
+        <TouchableOpacity style={styles.btn} onPress={startFakeNavigation}>
+          <Text style={styles.btnText}>Start Navigation</Text>
+        </TouchableOpacity>
+      </View>
 
-<View style={styles.searchBar}>
-<Text style={styles.searchIcon}>⌕</Text>
-<TextInput
-value={destination}
-onChangeText={setDestination}
-placeholder="Where to?"
-placeholderTextColor="#888"
-style={styles.searchInput}
-/>
-</View>
-
-<View style={styles.topChips}>
-<View style={styles.chip}>
-<Text style={styles.chipText}>{accent}</Text>
-</View>
-<View style={styles.chip}>
-<Text style={styles.chipText}>{humorLevel} humor</Text>
-</View>
-<View style={styles.chip}>
-<Text style={styles.chipText}>{autoCallouts ? 'auto on' : 'auto off'}</Text>
-</View>
-</View>
-
-<View style={styles.bottomSheet}>
-<Text style={styles.sheetHandle}>﹘</Text>
-<Text style={styles.routeTitle}>{destination}</Text>
-<Text style={styles.routeMeta}>18 min • 6.4 mi • light traffic</Text>
-
-{currentPlace ? (
-<View style={styles.placeCard}>
-<Text style={styles.placeTitle}>Passing now</Text>
-<Text style={styles.placeName}>{currentPlace.name}</Text>
-<Text style={styles.placeType}>Type: {currentPlace.type}</Text>
-</View>
-) : (
-<View style={styles.placeCard}>
-<Text style={styles.placeTitle}>Current GPPS Mode</Text>
-<Text style={styles.placeName}>Accent: {accent}</Text>
-<Text style={styles.placeType}>
-Humor: {humorLevel} • Auto: {autoCallouts ? 'On' : 'Off'}
-</Text>
-</View>
-)}
-
-<TouchableOpacity style={styles.voiceButton} onPress={() => setSettingsVisible(true)}>
-<Text style={styles.voiceButtonText}>Voice Settings</Text>
-</TouchableOpacity>
-
-<TouchableOpacity style={styles.previewButton} onPress={previewVoice}>
-<Text style={styles.previewButtonText}>Preview Voice</Text>
-</TouchableOpacity>
-
-{!isDriving ? (
-<TouchableOpacity style={styles.startButton} onPress={startDrive}>
-<Text style={styles.startButtonText}>Start Drive</Text>
-</TouchableOpacity>
-) : (
-<TouchableOpacity style={styles.stopButton} onPress={stopDrive}>
-<Text style={styles.stopButtonText}>Stop Drive</Text>
-</TouchableOpacity>
-)}
-</View>
-
-<VoiceSettingsModal
-visible={settingsVisible}
-onClose={() => setSettingsVisible(false)}
-accent={accent}
-humorLevel={humorLevel}
-autoCallouts={autoCallouts}
-onSelectAccent={setAccent}
-onSelectHumor={setHumorLevel}
-onToggleAutoCallouts={setAutoCallouts}
-/>
-</View>
-);
+      <VoiceSettingsModal
+        visible={settingsVisible}
+        onClose={() => setSettingsVisible(false)}
+        accent={accent}
+        humorLevel={humorLevel}
+        autoCallouts={autoCallouts}
+        onSelectAccent={setAccent}
+        onSelectHumor={setHumorLevel}
+        onToggleAutoCallouts={setAutoCallouts}
+      />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-container: {
-flex: 1,
-backgroundColor: '#dfe7ef',
-},
-fakeMap: {
-...StyleSheet.absoluteFillObject,
-backgroundColor: '#dfe7ef',
-justifyContent: 'center',
-alignItems: 'center',
-},
-mapBlobTopLeft: {
-position: 'absolute',
-top: 110,
-left: 20,
-width: 180,
-height: 120,
-backgroundColor: '#c9d7c1',
-borderRadius: 40,
-transform: [{ rotate: '-8deg' }],
-},
-mapBlobBottomRight: {
-position: 'absolute',
-right: 10,
-top: 280,
-width: 220,
-height: 150,
-backgroundColor: '#c9d7c1',
-borderRadius: 50,
-transform: [{ rotate: '12deg' }],
-},
-roadHorizontal: {
-position: 'absolute',
-top: 230,
-left: -20,
-right: -20,
-height: 20,
-backgroundColor: '#f7f2e7',
-borderRadius: 20,
-transform: [{ rotate: '-12deg' }],
-},
-roadVertical: {
-position: 'absolute',
-top: 120,
-left: 140,
-width: 22,
-height: 260,
-backgroundColor: '#f7f2e7',
-borderRadius: 20,
-transform: [{ rotate: '18deg' }],
-},
-searchBar: {
-position: 'absolute',
-top: 60,
-left: 16,
-right: 16,
-height: 56,
-borderRadius: 28,
-backgroundColor: '#ffffffee',
-flexDirection: 'row',
-alignItems: 'center',
-paddingHorizontal: 16,
-shadowColor: '#000',
-shadowOpacity: 0.08,
-shadowRadius: 12,
-shadowOffset: { width: 0, height: 4 },
-},
-searchIcon: {
-fontSize: 20,
-color: '#666',
-marginRight: 10,
-},
-searchInput: {
-flex: 1,
-fontSize: 16,
-color: '#111',
-},
-topChips: {
-position: 'absolute',
-top: 126,
-left: 16,
-flexDirection: 'row',
-gap: 10,
-flexWrap: 'wrap',
-right: 16,
-},
-chip: {
-backgroundColor: '#ffffffdd',
-paddingHorizontal: 14,
-paddingVertical: 8,
-borderRadius: 18,
-},
-chipText: {
-fontSize: 13,
-fontWeight: '600',
-color: '#333',
-textTransform: 'capitalize',
-},
-bottomSheet: {
-position: 'absolute',
-left: 0,
-right: 0,
-bottom: 0,
-backgroundColor: '#fff',
-borderTopLeftRadius: 30,
-borderTopRightRadius: 30,
-paddingHorizontal: 20,
-paddingTop: 10,
-paddingBottom: 34,
-shadowColor: '#000',
-shadowOpacity: 0.12,
-shadowRadius: 16,
-shadowOffset: { width: 0, height: -4 },
-},
-sheetHandle: {
-alignSelf: 'center',
-fontSize: 28,
-color: '#bbb',
-marginTop: -8,
-marginBottom: 4,
-},
-routeTitle: {
-fontSize: 22,
-fontWeight: '700',
-color: '#111',
-},
-routeMeta: {
-marginTop: 6,
-fontSize: 15,
-color: '#666',
-},
-placeCard: {
-marginTop: 18,
-backgroundColor: '#f7f7f7',
-padding: 16,
-borderRadius: 20,
-},
-placeTitle: {
-fontSize: 13,
-fontWeight: '700',
-color: '#666',
-marginBottom: 6,
-textTransform: 'uppercase',
-},
-placeName: {
-fontSize: 18,
-fontWeight: '700',
-color: '#111',
-textTransform: 'capitalize',
-},
-placeType: {
-marginTop: 6,
-fontSize: 14,
-color: '#666',
-textTransform: 'capitalize',
-},
-voiceButton: {
-marginTop: 16,
-backgroundColor: '#f2f2f2',
-paddingVertical: 16,
-borderRadius: 26,
-},
-voiceButtonText: {
-textAlign: 'center',
-fontSize: 16,
-fontWeight: '600',
-color: '#111',
-},
-previewButton: {
-marginTop: 12,
-backgroundColor: '#e9eefc',
-paddingVertical: 16,
-borderRadius: 26,
-},
-previewButtonText: {
-textAlign: 'center',
-fontSize: 16,
-fontWeight: '600',
-color: '#1d4ed8',
-},
-startButton: {
-marginTop: 12,
-backgroundColor: '#111',
-paddingVertical: 16,
-borderRadius: 26,
-},
-startButtonText: {
-textAlign: 'center',
-fontSize: 16,
-fontWeight: '700',
-color: '#fff',
-},
-stopButton: {
-marginTop: 12,
-backgroundColor: '#d92d20',
-paddingVertical: 16,
-borderRadius: 26,
-},
-stopButtonText: {
-textAlign: 'center',
-fontSize: 16,
-fontWeight: '700',
-color: '#fff',
-},
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
+  searchBar: {
+    position: 'absolute',
+    top: 60,
+    left: 16,
+    right: 16,
+    backgroundColor: '#fff',
+    borderRadius: 25,
+    padding: 12,
+  },
+
+  commandBar: {
+    position: 'absolute',
+    top: 120,
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 25,
+    padding: 10,
+  },
+
+  commandInput: { flex: 1 },
+
+  commandBtn: {
+    backgroundColor: '#111',
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    justifyContent: 'center',
+  },
+
+  commandBtnText: { color: '#fff' },
+
+  input: { fontSize: 16 },
+
+  bottom: {
+    position: 'absolute',
+    bottom: 40,
+    left: 16,
+    right: 16,
+  },
+
+  btn: {
+    backgroundColor: '#111',
+    padding: 14,
+    borderRadius: 20,
+    marginBottom: 10,
+  },
+
+  btnText: {
+    color: '#fff',
+    textAlign: 'center',
+    fontWeight: '600',
+  },
 });

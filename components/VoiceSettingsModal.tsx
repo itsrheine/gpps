@@ -30,7 +30,6 @@ export default function VoiceSettingsModal({
         <View style={styles.sheet}>
           <Text style={styles.title}>Voice Settings</Text>
 
-          {/* Accent */}
           <Text style={styles.section}>Accent</Text>
           <View style={styles.row}>
             {(['classic', 'british', 'italian'] as AccentOption[]).map((item) => (
@@ -46,7 +45,6 @@ export default function VoiceSettingsModal({
             ))}
           </View>
 
-          {/* Humor */}
           <Text style={styles.section}>Humor Level</Text>
           <View style={styles.row}>
             {(['low', 'medium', 'high'] as HumorLevel[]).map((item) => (
@@ -62,7 +60,6 @@ export default function VoiceSettingsModal({
             ))}
           </View>
 
-          {/* Toggle */}
           <View style={styles.toggleRow}>
             <View>
               <Text style={styles.toggleTitle}>Auto Callouts</Text>
@@ -71,7 +68,6 @@ export default function VoiceSettingsModal({
             <Switch value={autoCallouts} onValueChange={onToggleAutoCallouts} />
           </View>
 
-          {/* Done */}
           <TouchableOpacity style={styles.doneButton} onPress={onClose}>
             <Text style={styles.doneText}>Done</Text>
           </TouchableOpacity>
@@ -106,6 +102,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#666',
+    textTransform: 'capitalize',
   },
   row: {
     flexDirection: 'row',
@@ -124,6 +121,7 @@ const styles = StyleSheet.create({
   pillText: {
     color: '#111',
     fontWeight: '600',
+    textTransform: 'capitalize',
   },
   activeText: {
     color: '#fff',
