@@ -19,3 +19,8 @@ Desciption Here
 - Settings persist after refresh
 - Smooth iOS-style UI
 
+---
+
+### Known Problems
+
+- Voice with unlimited high-quality TTS should be coming from our own staff. Relying on third-party presets will cost a lot per usage.
