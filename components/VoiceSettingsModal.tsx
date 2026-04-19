@@ -1,17 +1,14 @@
 import { Modal, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 
-export type AccentOption = 'classic' | 'british' | 'italian';
-export type HumorLevel = 'low' | 'medium' | 'high';
-
 type Props = {
   visible: boolean;
   onClose: () => void;
-  accent: AccentOption;
-  humorLevel: HumorLevel;
+  accent: string;
+  humorLevel: string;
   autoCallouts: boolean;
-  onSelectAccent: (accent: AccentOption) => void;
-  onSelectHumor: (level: HumorLevel) => void;
-  onToggleAutoCallouts: (value: boolean) => void;
+  setAccent: (value: string) => void;
+  setHumorLevel: (value: string) => void;
+  setAutoCallouts: (value: boolean) => void;
 };
 
 export default function VoiceSettingsModal({
@@ -20,9 +17,9 @@ export default function VoiceSettingsModal({
   accent,
   humorLevel,
   autoCallouts,
-  onSelectAccent,
-  onSelectHumor,
-  onToggleAutoCallouts,
+  setAccent,
+  setHumorLevel,
+  setAutoCallouts,
 }: Props) {
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -32,11 +29,11 @@ export default function VoiceSettingsModal({
 
           <Text style={styles.section}>Accent</Text>
           <View style={styles.row}>
-            {(['classic', 'british', 'italian'] as AccentOption[]).map((item) => (
+            {['default', 'british', 'indian', 'funny'].map((item) => (
               <TouchableOpacity
                 key={item}
                 style={[styles.pill, accent === item && styles.active]}
-                onPress={() => onSelectAccent(item)}
+                onPress={() => setAccent(item)}
               >
                 <Text style={[styles.pillText, accent === item && styles.activeText]}>
                   {item}
@@ -47,11 +44,11 @@ export default function VoiceSettingsModal({
 
           <Text style={styles.section}>Humor Level</Text>
           <View style={styles.row}>
-            {(['low', 'medium', 'high'] as HumorLevel[]).map((item) => (
+            {['normal', 'funny', 'high'].map((item) => (
               <TouchableOpacity
                 key={item}
                 style={[styles.pill, humorLevel === item && styles.active]}
-                onPress={() => onSelectHumor(item)}
+                onPress={() => setHumorLevel(item)}
               >
                 <Text style={[styles.pillText, humorLevel === item && styles.activeText]}>
                   {item}
@@ -65,7 +62,7 @@ export default function VoiceSettingsModal({
               <Text style={styles.toggleTitle}>Auto Callouts</Text>
               <Text style={styles.toggleSub}>Speak automatically while driving</Text>
             </View>
-            <Switch value={autoCallouts} onValueChange={onToggleAutoCallouts} />
+            <Switch value={autoCallouts} onValueChange={setAutoCallouts} />
           </View>
 
           <TouchableOpacity style={styles.doneButton} onPress={onClose}>
